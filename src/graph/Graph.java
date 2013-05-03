@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.Stack;
+import graph.State;
 
 import network.serial.USBCommunicator;
 
@@ -23,6 +24,7 @@ public class Graph {
 	private boolean autoMode;
 	private Node robotNode;
 	private USBCommunicator locomotionController;
+	protected graph.State state;
 	
 	public Graph(int rootSymbol, int goalSymbol, USBCommunicator locomotionController)
 	{
@@ -36,6 +38,7 @@ public class Graph {
 		rootNode = null;
 		autoMode = false;
 		this.locomotionController = locomotionController; 
+		state = graph.State.POSITION;
 	}
 	public synchronized void setAutoMode(boolean newMode) {
 		autoMode = newMode;
@@ -53,9 +56,12 @@ public class Graph {
 			{
 				while(true) 
 				{
-					if(loadPositionFromFile("positionData.txt")) 
+					if(loadPositionFromFile("Position.txt")) 
 					{
-						sendPathCorrection();
+						if(state == graph.State.EXCAVATE_STRAIGHTISH)
+						{
+							sendPathCorrection();
+						}
 					}
 					else 
 					{
@@ -80,7 +86,7 @@ public class Graph {
 			{
 				while(true)
 				{
-					if(loadMapFromFile("ThomasMapHere.txt"))
+					if(loadMapFromFile("Map.txt"))
 					{
 						planPath();
 						backTrace();
@@ -110,7 +116,14 @@ public class Graph {
 	
 	public void sendPathCorrection()
 	{
-		
+		double error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
+		byte[] byteArray = new byte[5];
+		byteArray[0] = 0x14;
+		byteArray[1] = 0x50;
+		byteArray[2] = (byte) (127 - error);
+		byteArray[3] = 0x50;
+		byteArray[4] = (byte) (127 + error);
+		locomotionController.writeBytes(byteArray);
 	}
 	
 	public boolean loadPositionFromFile(String filename)
@@ -132,6 +145,7 @@ public class Graph {
 			}
 			scanner.close();
 			f.delete();
+			state = graph.State.EXCAVATE_STRAIGHTISH;
 			return true;
 		}
 		return false;
@@ -374,7 +388,7 @@ public class Graph {
 	public double errorDistance(Segment vector, int pointX, int pointY) {
 		double slope = vector.getSlope();
 		double yIntercept = -slope*vector.getStartX() - vector.getStartY();
-		double distance = Math.abs(slope*pointX + pointY + yIntercept)/Math.sqrt(Math.pow(slope, 2) + 1);
+		double distance = (slope*pointX + pointY + yIntercept)/Math.sqrt(Math.pow(slope, 2) + 1);
 		return distance;
 	}
 }

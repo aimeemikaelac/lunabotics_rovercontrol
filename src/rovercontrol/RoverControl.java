@@ -26,9 +26,10 @@ public class RoverControl {
 	
 	public RoverControl(int port) {
 		this.port = port;
-		locomotionCommunicator = new USBCommunicator("COM4");
-		excavationCommunicator = new USBCommunicator("COM5");
-		encoderCommunicator = new USBCommunicator("COM6");
+		locomotionCommunicator = new USBCommunicator("COM9");
+		locomotionCommunicator.start();
+		//excavationCommunicator = new USBCommunicator("COM5");
+		//encoderCommunicator = new USBCommunicator("COM6");
 		locomotionBuffer = new ArrayList<byte[]>();
 		autoManualMode = STARTING_AUTO_MANUAL_MODE;
 		this.mapper = new Graph(2,3,locomotionCommunicator);
@@ -50,20 +51,21 @@ public class RoverControl {
 				InputStream receivedStream = connectedSocket.getInputStream();
 				int numBytes = receivedStream.available();
 				byte[] bytes = new byte[numBytes];
-				receivedStream.read(bytes);
-				locomotionCommunicator.writeBytes(bytes);
-				int networkCode = bytes[0];
-				if(networkCode == 0x24)
-				{
-					autoManualMode = !autoManualMode;
-					if(autoManualMode) {
-						mapper.setAutoMode(true);
-					}
-					else {
-						mapper.setAutoMode(false);
+				if(numBytes > 0){
+					receivedStream.read(bytes);
+					locomotionCommunicator.writeBytes(bytes);
+					int networkCode = bytes[0];
+					if(networkCode == 0x24)
+					{
+						autoManualMode = !autoManualMode;
+						if(autoManualMode) {
+							mapper.setAutoMode(true);
+						}
+						else {
+							mapper.setAutoMode(false);
+						}
 					}
 				}
-				
 				serverSocket.close();
 				connectedSocket.close();
 			} catch (IOException e) {
