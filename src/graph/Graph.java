@@ -25,6 +25,14 @@ public class Graph implements Runnable {
 	private Node robotNode;
 	private USBCommunicator locomotionController;
 	protected graph.State state;
+	private double error;
+	public final double ERROR_TOLERANCE = 10.0;
+	public final double EXCAVATION_AREA_BOUNDARY = 4440.0;
+	public final double OBSTACE_AREA_BOUNDARY = 1500.0;
+	public final double FORWARD_DIRECTION = 0.0;
+	public enum CompetitionAreas {
+		STARTING, OBSTACLE, EXCAVATION;
+	}
 	
 	public Graph(int rootSymbol, int goalSymbol, USBCommunicator locomotionController)
 	{
@@ -38,7 +46,8 @@ public class Graph implements Runnable {
 		rootNode = null;
 		autoMode = false;
 		this.locomotionController = locomotionController; 
-		state = graph.State.POSITION;
+		state = graph.State.START;
+		error = 0;
 	}
 	public synchronized void setAutoMode(boolean newMode) {
 		autoMode = newMode;
@@ -116,6 +125,7 @@ public class Graph implements Runnable {
 		receivedData.start();
 		while(true) {
 			//Switch statement of ultimate power
+			//TODO: implement all states
 			switch(state) {
 				case START:
 					state = State.POSITION;
@@ -147,28 +157,28 @@ public class Graph implements Runnable {
 					driveStraighishExcavate();
 					break;
 				case EXCAVATE_ROTATE:
-					rotateExcavate();
+//					rotateExcavate();
 					break;
 				case EXCAVATE:
-					excavate();
+//					excavate();
 					break;
 				case DRIVE_TO_STARTING_AREA:
-					driveStartingArea();
+//					driveStartingArea();
 					break;
 				case RETURN_STRAIGHTISH:
-					returnStraightish();
+//					returnStraightish();
 					break;
 				case RETURN_ROTATE:
-					returnRotate();
+//					returnRotate();
 					break;
 				case DUMPING_CENTER:
-					dumpingCenter();
+//					dumpingCenter();
 					break;
 				case BACK_IN:
-					backIn();
+//					backIn();
 					break;
 				case DUMP:
-					dump();
+//					dump();
 					break;
 			}
 		}
@@ -178,10 +188,40 @@ public class Graph implements Runnable {
 		if(!acceptableError()) {
 			state = State.EXCAVATE_ROTATE;
 		}
-		if(reachedDestination()) {
+		//Y value of excavation region in millimeters is: 4440.0 mm
+		if(reachedDestination(CompetitionAreas.EXCAVATION)) {
 			state = State.EXCAVATE;
 		}
 		
+	}
+	private synchronized boolean reachedDestination(CompetitionAreas area) {
+		double currentY = robotNode.getY();
+		switch(area) {
+			case EXCAVATION:
+				if(currentY > EXCAVATION_AREA_BOUNDARY) {
+					return true;
+				}
+				return false;
+			case OBSTACLE:
+				if(currentY < EXCAVATION_AREA_BOUNDARY && currentY > OBSTACE_AREA_BOUNDARY) {
+					return true;
+				}
+				return false;
+			case STARTING:
+				if(currentY < OBSTACE_AREA_BOUNDARY) {
+					return true;
+				}
+				return false;
+			default: 
+				return false;
+		}
+	}
+	private boolean acceptableError() {
+		//TODO: change to correct error tolerance
+		if(error < ERROR_TOLERANCE ) {
+			return false;
+		}
+		return false;
 	}
 	private void driveToExcavate() {
 		if(orientedCorrectly()) {
@@ -192,10 +232,17 @@ public class Graph implements Runnable {
 		}
 		
 	}
+	private boolean orientedCorrectly() {
+		//TODO: make sure that 0 degrees is correct forward and add a tolerance
+		if(robotNode.getAngle() == FORWARD_DIRECTION ) {
+			return true;
+		}
+		return false;
+	}
 	public void sendPathCorrection()
 	{
 		if(state == State.EXCAVATE_STRAIGHTISH || state == State.RETURN_STRAIGHTISH) {
-			double error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
+			error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
 			byte[] byteArray = new byte[5];
 			byteArray[0] = 0x14;
 			byteArray[1] = 0x50;
