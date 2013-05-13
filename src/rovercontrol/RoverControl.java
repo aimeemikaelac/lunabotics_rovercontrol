@@ -21,6 +21,7 @@ public class RoverControl {
 	private Graph mapper;
 	private final boolean STARTING_AUTO_MANUAL_MODE = false;
 	private boolean autoManualMode;
+	Thread graphThread;
 	
 	private ArrayList<byte[]> locomotionBuffer;
 	
@@ -33,6 +34,7 @@ public class RoverControl {
 		locomotionBuffer = new ArrayList<byte[]>();
 		autoManualMode = STARTING_AUTO_MANUAL_MODE;
 		this.mapper = new Graph(2,3,locomotionCommunicator);
+		graphThread = new Thread(mapper);
 	}
 	/**
 	 * 
@@ -41,7 +43,7 @@ public class RoverControl {
 	public static void main(String[] args) {
 		RoverControl controller =  new RoverControl(Integer.parseInt(args[0]));
 		controller.runNetworkListener();
-		
+		controller.graphThread.start();
 	}
 	private void runNetworkListener() {
 		while(true) {

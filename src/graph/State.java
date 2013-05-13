@@ -1,6 +1,7 @@
 package graph;
 
 public enum State {
+	START,
 	POSITION, ORIENTATION,
 	MOVE_CENTER, ROTATE_CENTER,
 	WAIT_MAP,

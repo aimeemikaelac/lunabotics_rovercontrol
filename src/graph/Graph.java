@@ -12,7 +12,7 @@ import network.serial.USBCommunicator;
 
 
 
-public class Graph {
+public class Graph implements Runnable {
 	private ArrayList<ArrayList<Node>> map;
 	private ArrayList<Node> path;
 	private ArrayList<Segment> vectorizedPath;
@@ -44,7 +44,7 @@ public class Graph {
 		autoMode = newMode;
 	}
 	
-	public void Run()
+	public void run()
 	{
 		boolean inAutonomyMode =false;
 		synchronized(this) {
@@ -112,6 +112,64 @@ public class Graph {
 		};
 
 		receivedData.start();
+		while(true) {
+			//Switch statement of ultimate power
+			switch(state) {
+				case START:
+					state = State.POSITION;
+					break;
+				case POSITION:
+					getStartingPosition();
+					state = State.ORIENTATION;
+					break;
+				case ORIENTATION:
+					getStartingOrientation();
+					state = State.ROTATE_CENTER;
+					break;
+				case MOVE_CENTER:
+					moveToCenter();
+					state = State.WAIT_MAP;
+					break;
+				case ROTATE_CENTER:
+					rotateCenter();
+					state = State.MOVE_CENTER;
+					break;
+				case WAIT_MAP:
+					waitForMap();
+					state = State.DRIVE_TO_EXCAVATE;
+					break;
+				case DRIVE_TO_EXCAVATE:
+					driveToExcavate();
+					break;
+				case EXCAVATE_STRAIGHTISH:
+					driveStraighishExcavate();
+					break;
+				case EXCAVATE_ROTATE:
+					rotateExcavate();
+					break;
+				case EXCAVATE:
+					excavate();
+					break;
+				case DRIVE_TO_STARTING_AREA:
+					driveStartingArea();
+					break;
+				case RETURN_STRAIGHTISH:
+					returnStraightish();
+					break;
+				case RETURN_ROTATE:
+					returnRotate();
+					break;
+				case DUMPING_CENTER:
+					dumpingCenter();
+					break;
+				case BACK_IN:
+					backIn();
+					break;
+				case DUMP:
+					dump();
+					break;
+			}
+		}
 	}
 	
 	public void sendPathCorrection()
