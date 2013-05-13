@@ -4,14 +4,20 @@ public class Node {
 	public Boolean visited;
 	private Node prevNode;
 	private int x, y;
+	private double angle;
 	
-	Node(int s, int x, int y)
+	Node(int s, int x, int y, double angle)
 	{
 		status = s;
 		visited = false;
 		this.x = x;
 		this.y = y;
+		this.angle = angle;
 		prevNode = null;
+	}
+
+	public double getAngle() {
+		return angle;
 	}
 
 	public int getX() {

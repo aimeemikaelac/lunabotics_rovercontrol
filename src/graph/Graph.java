@@ -60,7 +60,9 @@ public class Graph implements Runnable {
 					{
 						if(state == graph.State.EXCAVATE_STRAIGHTISH)
 						{
-							sendPathCorrection();
+							synchronized(this) {
+								sendPathCorrection();
+							}
 						}
 					}
 					else 
@@ -119,23 +121,23 @@ public class Graph implements Runnable {
 					state = State.POSITION;
 					break;
 				case POSITION:
-					getStartingPosition();
+//					getStartingPosition();
 					state = State.ORIENTATION;
 					break;
 				case ORIENTATION:
-					getStartingOrientation();
+//					getStartingOrientation();
 					state = State.ROTATE_CENTER;
 					break;
 				case MOVE_CENTER:
-					moveToCenter();
+//					moveToCenter();
 					state = State.WAIT_MAP;
 					break;
 				case ROTATE_CENTER:
-					rotateCenter();
+//					rotateCenter();
 					state = State.MOVE_CENTER;
 					break;
 				case WAIT_MAP:
-					waitForMap();
+//					waitForMap();
 					state = State.DRIVE_TO_EXCAVATE;
 					break;
 				case DRIVE_TO_EXCAVATE:
@@ -172,16 +174,36 @@ public class Graph implements Runnable {
 		}
 	}
 	
+	private void driveStraighishExcavate() {
+		if(!acceptableError()) {
+			state = State.EXCAVATE_ROTATE;
+		}
+		if(reachedDestination()) {
+			state = State.EXCAVATE;
+		}
+		
+	}
+	private void driveToExcavate() {
+		if(orientedCorrectly()) {
+			state = State.EXCAVATE_STRAIGHTISH;
+		}
+		else {
+			state = State.EXCAVATE_ROTATE;
+		}
+		
+	}
 	public void sendPathCorrection()
 	{
-		double error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
-		byte[] byteArray = new byte[5];
-		byteArray[0] = 0x14;
-		byteArray[1] = 0x50;
-		byteArray[2] = (byte) (127 - error);
-		byteArray[3] = 0x50;
-		byteArray[4] = (byte) (127 + error);
-		locomotionController.writeBytes(byteArray);
+		if(state == State.EXCAVATE_STRAIGHTISH || state == State.RETURN_STRAIGHTISH) {
+			double error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
+			byte[] byteArray = new byte[5];
+			byteArray[0] = 0x14;
+			byteArray[1] = 0x50;
+			byteArray[2] = (byte) (127 - error);
+			byteArray[3] = 0x50;
+			byteArray[4] = (byte) (127 + error);
+			locomotionController.writeBytes(byteArray);
+		}
 	}
 	
 	public boolean loadPositionFromFile(String filename)
@@ -195,7 +217,7 @@ public class Graph implements Runnable {
 				int x = scanner.nextInt();
 				int y = scanner.nextInt();
 				double angle = scanner.nextDouble();
-				robotNode = new Node(0, x, y);
+				robotNode = new Node(0, x, y, angle);
 			}
 			catch (FileNotFoundException e)
 			{
@@ -229,7 +251,9 @@ public class Graph implements Runnable {
 						rowsMade++;
 					}
 					int value = scanner.nextInt();
-					map.get(rowsMade-1).add(new Node(value, colsMade, rowsMade-1));
+					//TODO: use a real value for angle----------------------------|-------------------------------------------------------------------
+					map.get(rowsMade-1).add(new Node(value, colsMade, rowsMade-1, 0));
+					//------------------------------------------------------------|-------------------------------------------------------------------
 					if(value == goalValue && goalNode == null)
 					{
 						goalNode = map.get(rowsMade-1).get(map.get(rowsMade-1).size()-1);
