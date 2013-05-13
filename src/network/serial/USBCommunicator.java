@@ -27,7 +27,7 @@ public class USBCommunicator extends Thread implements SerialPortEventListener {
 	private String PORT_NAMES[] = { 
 			"/dev/tty.usbserial-A9007UX1", // Mac OS X
 			"/dev/ttyUSB0", // Linux
-			"COM3", // Windows
+			"COM6", // Windows
 	};
 	public USBCommunicator(String comPort) {
 		if(comPort.compareTo("COM3") != 0) {
@@ -184,7 +184,7 @@ public class USBCommunicator extends Thread implements SerialPortEventListener {
 	}
 
 	public static void main(String[] args) throws Exception {
-		USBCommunicator main = new USBCommunicator("COM4");
+		USBCommunicator main = new USBCommunicator("COM6");
 //		main.initialize();
 		
 		main.start();
