@@ -26,10 +26,13 @@ public class Graph implements Runnable {
 	private USBCommunicator locomotionController;
 	protected graph.State state;
 	private double error;
+	//TODO: Setup the Center Node to be inside of the graph.
+	public final Node CENTER = new Node(5, 1940, 954, 0);
 	public final double ERROR_TOLERANCE = 10.0;
 	public final double EXCAVATION_AREA_BOUNDARY = 4440.0;
 	public final double OBSTACE_AREA_BOUNDARY = 1500.0;
 	public final double FORWARD_DIRECTION = 0.0;
+	public final double ANGLE_TOLERANCE = 5.0;
 	public enum CompetitionAreas {
 		STARTING, OBSTACLE, EXCAVATION;
 	}
@@ -65,16 +68,8 @@ public class Graph implements Runnable {
 			{
 				while(true) 
 				{
-					if(loadPositionFromFile("Position.txt")) 
-					{
-						if(state == graph.State.EXCAVATE_STRAIGHTISH)
-						{
-							synchronized(this) {
-								sendPathCorrection();
-							}
-						}
-					}
-					else 
+					boolean readInFile = loadPositionFromFile("Position.txt");
+					if (!readInFile)
 					{
 						try 
 						{
@@ -128,14 +123,10 @@ public class Graph implements Runnable {
 			//TODO: implement all states
 			switch(state) {
 				case START:
-					state = State.POSITION;
-					break;
-				case POSITION:
-//					getStartingPosition();
 					state = State.ORIENTATION;
 					break;
 				case ORIENTATION:
-//					getStartingOrientation();
+					getOriented();
 					state = State.ROTATE_CENTER;
 					break;
 				case MOVE_CENTER:
@@ -233,8 +224,7 @@ public class Graph implements Runnable {
 		
 	}
 	private boolean orientedCorrectly() {
-		//TODO: make sure that 0 degrees is correct forward and add a tolerance
-		if(robotNode.getAngle() == FORWARD_DIRECTION ) {
+		if(robotNode.getAngle() <= FORWARD_DIRECTION + ANGLE_TOLERANCE && robotNode.getAngle() >= FORWARD_DIRECTION - ANGLE_TOLERANCE) {
 			return true;
 		}
 		return false;
@@ -264,6 +254,7 @@ public class Graph implements Runnable {
 				int x = scanner.nextInt();
 				int y = scanner.nextInt();
 				double angle = scanner.nextDouble();
+				//TODO: Double check the robot Node status is correct.
 				robotNode = new Node(0, x, y, angle);
 			}
 			catch (FileNotFoundException e)
@@ -519,5 +510,54 @@ public class Graph implements Runnable {
 		double yIntercept = -slope*vector.getStartX() - vector.getStartY();
 		double distance = (slope*pointX + pointY + yIntercept)/Math.sqrt(Math.pow(slope, 2) + 1);
 		return distance;
+	}
+	
+	private double getNextSegmentAngle()
+	{
+		Segment seg = vectorizedPath.get(0);
+		return Math.toDegrees(Math.tan((seg.getEndX()-seg.getStartX())/(seg.getEndY()-seg.getStartY())));
+	}
+	
+	private void rotateRobot()
+	{
+		byte[] byteArray = {0x11,0x14,0x50,0x01,0x50,(byte) 0xFE};
+		locomotionController.writeBytes(byteArray);
+	}
+	
+	private void rotateRobot(double deg)
+	{
+		double startingAngle = robotNode.getDegree + deg;
+		while(robotNode.getDegree())
+		{
+			
+		}
+	}
+	
+	private boolean readOrientationFile()
+	{
+		//TODO: Define this function to pull in data for the first orientation routine.
+		return true;
+	}
+	
+	private void getOriented()
+	{
+		boolean orientationNotBackwards = true;
+		while(orientationNotBackwards)
+		{
+			rotateRobot();
+			orientationNotBackwards = readOrientationFile();
+		}
+		/*while(robotNode == null)
+		{
+			try{
+				synchronized(this){
+					wait(1);
+				}
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}*/
+		return;
 	}
 }
