@@ -33,6 +33,8 @@ public class Graph implements Runnable {
 	public final double OBSTACE_AREA_BOUNDARY = 1500.0;
 	public final double FORWARD_DIRECTION = 0.0;
 	public final double ANGLE_TOLERANCE = 5.0;
+	public final double DISTANCE_TOLERANCE = 50.0;
+	public final double PATH_PID_WIDTH = 2;
 	public enum CompetitionAreas {
 		STARTING, OBSTACLE, EXCAVATION;
 	}
@@ -144,14 +146,14 @@ public class Graph implements Runnable {
 				case DRIVE_TO_EXCAVATE:
 					driveToExcavate();
 					break;
-				case EXCAVATE_STRAIGHTISH:
-					driveStraighishExcavate();
-					break;
-				case EXCAVATE_ROTATE:
+//				case EXCAVATE_STRAIGHTISH:
+//					driveStraighishExcavate();
+//					break;
+//				case EXCAVATE_ROTATE:
 //					rotateExcavate();
-					break;
+//					break;
 				case EXCAVATE:
-//					excavate();
+					excavate();
 					break;
 				case DRIVE_TO_STARTING_AREA:
 //					driveStartingArea();
@@ -175,6 +177,19 @@ public class Graph implements Runnable {
 		}
 	}
 	
+	private void excavate() {
+		// TODO Auto-generated method stub
+		// Rotate to 0 degrees
+		rotateRobot(0-robotNode.getAngle());
+		// Lower Ladder
+		//lowerLadderRobot();
+		// Set new destination to 5 meter limit plus .25 meters.
+		//vectorizedPath.add(new Segment())
+		//Angle 15 degrees
+		rotateRobot(15);
+		//
+		
+	}
 	private void driveStraighishExcavate() {
 		if(!acceptableError()) {
 			state = State.EXCAVATE_ROTATE;
@@ -308,7 +323,8 @@ public class Graph implements Runnable {
 				e.printStackTrace();
 			}
 			scanner.close();
-			f.delete();
+			//TODO: Do not make the same mistake again.
+			//f.delete();
 			return true;
 		}
 		return false;
@@ -341,41 +357,41 @@ public class Graph implements Runnable {
 					return true;
 				}
 				Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()+1);
-				if(nextNode.status == 0 || nextNode.status == 3)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
 				{
-					if(nextNode.status != 3)
+					if(nextNode.status != 6)
 					{
-						nextNode.status = 5;
+						nextNode.status = 10;
 					}
 					nextNode.setPrevNode(currentNode);
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()).get(currentNode.getX()-1);
-				if(nextNode.status == 0 || nextNode.status == 3)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
 				{
-					if(nextNode.status != 3)
+					if(nextNode.status != 6)
 					{
-						nextNode.status = 5;
+						nextNode.status = 10;
 					}
 					nextNode.setPrevNode(currentNode);
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()+1).get(currentNode.getX());
-				if(nextNode.status == 0 || nextNode.status == 3)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
 				{
-					if(nextNode.status != 3)
+					if(nextNode.status != 6)
 					{
-						nextNode.status = 5;
+						nextNode.status = 10;
 					}
 					nextNode.setPrevNode(currentNode);
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()-1).get(currentNode.getX());
-				if(nextNode.status == 0 || nextNode.status == 3)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
 				{
-					if(nextNode.status != 3)
+					if(nextNode.status != 6)
 					{
-						nextNode.status = 5;
+						nextNode.status = 10;
 					}
 					nextNode.setPrevNode(currentNode);
 					q.add(nextNode);
@@ -485,7 +501,7 @@ public class Graph implements Runnable {
 					if(node.getY() <= Math.max(s.getEndY(), s.getStartY())
 							&& node.getY() >= Math.min(s.getEndY(), s.getStartY()))
 					{
-						if(node.status == blockedValue)
+						if(node.status == 2 || node.status == 3 || node.status == 0)
 						{
 							blocked.add(node);
 						}
@@ -520,19 +536,94 @@ public class Graph implements Runnable {
 	
 	private void rotateRobot()
 	{
-		byte[] byteArray = {0x11,0x14,0x50,0x01,0x50,(byte) 0xFE};
+		byte[] byteArray = {0x11, 0x14, 0x50, 0x01, 0x50, (byte) 0xFE};
 		locomotionController.writeBytes(byteArray);
+	}
+	
+	private boolean robotIsCloseEnough()
+	{
+		return
+				robotNode.getX() > (vectorizedPath.get(0).getEndX() - DISTANCE_TOLERANCE) &&
+				robotNode.getX() < (vectorizedPath.get(0).getEndX() + DISTANCE_TOLERANCE) &&
+				robotNode.getY() > (vectorizedPath.get(0).getEndY() - DISTANCE_TOLERANCE) &&
+				robotNode.getY() < (vectorizedPath.get(0).getEndY() + DISTANCE_TOLERANCE);
+	}
+	
+	private void moveRobot(boolean forward)
+	{
+		if(forward)
+		{
+			byte[] byteArray = {0x11, 0x14, 0x50, (byte) 0xFE, 0x50, (byte) 0xFE};
+			locomotionController.writeBytes(byteArray);
+		}
+		else
+		{
+			byte[] byteArray = {0x11, 0x14, 0x50, 0x01, 0x50, 0x01};
+			locomotionController.writeBytes(byteArray);
+		}
+		while(!robotIsCloseEnough())
+		{
+			try{
+				synchronized(this){
+					wait(20);
+				}
+			} catch (Exception ex){
+				ex.printStackTrace();
+			}
+			int change = (int)(errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY())/PATH_PID_WIDTH);
+			byte right = (byte) (change + 127);
+			byte left = (byte) (-change + 127);
+			byte[] byteArray = {0x14, 0x60, right, 0x60, left};
+			locomotionController.writeBytes(byteArray);
+		}
+		stopRobot();
+		return;
 	}
 	
 	private void rotateRobot(double deg)
 	{
-		double startingAngle = robotNode.getDegree + deg;
-		while(robotNode.getDegree())
+		double startingAngle = robotNode.getAngle();
+		double endingAngle = robotNode.getAngle() + deg;
+		if(deg < 0)
 		{
-			
+			byte[] byteArray = {0x11, 0x14, 0x50, 0x01, 0x50, (byte) 0xFE};
+			locomotionController.writeBytes(byteArray);
+			while(robotNode.getAngle() > endingAngle)
+			{
+				try{
+					synchronized(this){
+						wait(20);
+					}
+				} catch (Exception ex){
+					ex.printStackTrace();
+				}
+			}
 		}
+		else if (deg > 0)
+		{
+			byte[] byteArray = {0x11, 0x14, 0x50, (byte) 0xFE, 0x50, 0x01};
+			locomotionController.writeBytes(byteArray);
+			while(robotNode.getAngle() < endingAngle)
+			{
+				try{
+					synchronized(this){
+						wait(20);
+					}
+				} catch(Exception ex)
+				{
+					ex.printStackTrace();
+				}
+			}
+		}
+		stopRobot();
+		return;
 	}
 	
+	private void stopRobot() {
+		byte[] byteArray = {0x12};
+		locomotionController.writeBytes(byteArray);
+		
+	}
 	private boolean readOrientationFile()
 	{
 		//TODO: Define this function to pull in data for the first orientation routine.
@@ -544,6 +635,7 @@ public class Graph implements Runnable {
 		boolean orientationNotBackwards = true;
 		while(orientationNotBackwards)
 		{
+			//TODO: Check with Thomas to see if he can give me a direction that would be best to turn, and an approximate degree.
 			rotateRobot();
 			orientationNotBackwards = readOrientationFile();
 		}
