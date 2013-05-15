@@ -177,16 +177,38 @@ public class Graph implements Runnable {
 		}
 	}
 	
+	private void lowerLadderRobot()
+	{
+		byte[] byteArray = {0x41};
+		locomotionController.writeBytes(byteArray);
+	}
+	
+	private void raiseLadderRobot()
+	{
+		byte[] byteArray = {0x42};
+		locomotionController.writeBytes(byteArray);
+	}
+	
+	private void startLadderRobot()
+	{
+		byte[] byteArray = {0x44};
+		locomotionController.writeBytes(byteArray);
+	}
+	
 	private void excavate() {
+		final double angle = 15.0;
 		// TODO Auto-generated method stub
 		// Rotate to 0 degrees
 		rotateRobot(0-robotNode.getAngle());
 		// Lower Ladder
-		//lowerLadderRobot();
+		lowerLadderRobot();
+		startLadderRobot();
 		// Set new destination to 5 meter limit plus .25 meters.
-		//vectorizedPath.add(new Segment())
+		vectorizedPath.add(new Segment(robotNode.getX(),robotNode.getX(),robotNode.getY(),5));
+		moveRobot(true);
 		//Angle 15 degrees
-		rotateRobot(15);
+		rotateRobot(angle);
+		//vectorizedPath.add(newSegment(robotNode.getX(),robotNode.getX());
 		//
 		
 	}
@@ -576,6 +598,7 @@ public class Graph implements Runnable {
 			byte[] byteArray = {0x14, 0x60, right, 0x60, left};
 			locomotionController.writeBytes(byteArray);
 		}
+		vectorizedPath.remove(0);
 		stopRobot();
 		return;
 	}
