@@ -27,7 +27,7 @@ public class RoverControl {
 	
 	public RoverControl(int port) {
 		this.port = port;
-		locomotionCommunicator = new USBCommunicator("COM5");
+		locomotionCommunicator = new USBCommunicator("COM10");
 		locomotionCommunicator.start();
 		//excavationCommunicator = new USBCommunicator("COM5");
 		//encoderCommunicator = new USBCommunicator("COM6");
@@ -49,13 +49,16 @@ public class RoverControl {
 		while(true) {
 			try {
 				serverSocket = new ServerSocket(port);
+				System.out.println("created port");
 				connectedSocket = serverSocket.accept();
+				System.out.println("accepted connection");
 				InputStream receivedStream = connectedSocket.getInputStream();
 				int numBytes = receivedStream.available();
 				byte[] bytes = new byte[numBytes];
 				if(numBytes > 0){
 					receivedStream.read(bytes);
 					locomotionCommunicator.writeBytes(bytes);
+					System.out.println("wrote bytes");
 					int networkCode = bytes[0];
 					if(networkCode == 0x24)
 					{
@@ -72,7 +75,7 @@ public class RoverControl {
 				connectedSocket.close();
 			} catch (IOException e) {
 //				e.printStackTrace();
-				System.out.println("Could not open socket on port: "+port);
+				System.out.println("Could not open socket on port: " + port);
 			}
 		}
 	}
