@@ -16,9 +16,9 @@ public class Graph implements Runnable {
 	private ArrayList<ArrayList<Node>> map;
 	private ArrayList<Node> path;
 	private ArrayList<Segment> vectorizedPath;
-	private int goalValue;
 	private int rootValue;
-	private int blockedValue;
+	private int goalValue;
+	//private int blockedValue;
 	private Node goalNode;
 	private Node rootNode;
 	private boolean autoMode;
@@ -27,10 +27,11 @@ public class Graph implements Runnable {
 	protected graph.State state;
 	private double error;
 	//TODO: Setup the Center Node to be inside of the graph.
-	public final Node CENTER = new Node(5, 1940, 954, 0);
 	public final double ERROR_TOLERANCE = 10.0;
+	public final double ARENA_WIDTH = 3880.0;
+	public final double ARENA_LENGTH = 7880.0;
 	public final double EXCAVATION_AREA_BOUNDARY = 4440.0;
-	public final double OBSTACE_AREA_BOUNDARY = 1500.0;
+	public final double OBSTACLE_AREA_BOUNDARY = 1500.0;
 	public final double FORWARD_DIRECTION = 0.0;
 	public final double ANGLE_TOLERANCE = 5.0;
 	public final double DISTANCE_TOLERANCE = 50.0;
@@ -39,14 +40,14 @@ public class Graph implements Runnable {
 		STARTING, OBSTACLE, EXCAVATION;
 	}
 	
-	public Graph(int rootSymbol, int goalSymbol, USBCommunicator locomotionController)
+	public Graph(int rootSymbol, USBCommunicator locomotionController)
 	{
 		map = new ArrayList<ArrayList<Node>>();
 		path = new ArrayList<Node>();
 		vectorizedPath = new ArrayList<Segment>();
-		goalValue = goalSymbol;
 		rootValue = rootSymbol;
-		blockedValue = 1;
+		goalValue = 6;
+		//blockedValue = 1;
 		goalNode = null;
 		rootNode = null;
 		autoMode = false;
@@ -94,13 +95,7 @@ public class Graph implements Runnable {
 			{
 				while(true)
 				{
-					if(loadMapFromFile("Map.txt"))
-					{
-						planPath();
-						backTrace();
-						vectorizePath();
-					}
-					else
+					if(loadMapFromFile("Map.txt", goalValue))
 					{
 						try
 						{
@@ -129,22 +124,19 @@ public class Graph implements Runnable {
 					break;
 				case ORIENTATION:
 					getOriented();
-					state = State.ROTATE_CENTER;
+					state = State.MOVE_TO_CENTER;
 					break;
-				case MOVE_CENTER:
-//					moveToCenter();
-					state = State.WAIT_MAP;
+				case MOVE_TO_CENTER:
+					moveToCenter(true);
+					state = State.MOVE_TO_EXCAVATE;
 					break;
-				case ROTATE_CENTER:
-//					rotateCenter();
-					state = State.MOVE_CENTER;
-					break;
-				case WAIT_MAP:
+//				case WAIT_MAP:
 //					waitForMap();
-					state = State.DRIVE_TO_EXCAVATE;
-					break;
-				case DRIVE_TO_EXCAVATE:
+//					state = State.DRIVE_TO_EXCAVATE;
+//					break;
+				case MOVE_TO_EXCAVATE:
 					driveToExcavate();
+					state = State.EXCAVATE;
 					break;
 //				case EXCAVATE_STRAIGHTISH:
 //					driveStraighishExcavate();
@@ -155,28 +147,33 @@ public class Graph implements Runnable {
 				case EXCAVATE:
 					excavate();
 					break;
-				case DRIVE_TO_STARTING_AREA:
-//					driveStartingArea();
+				case MOVE_TO_DUMPING:
+					moveToCenter(false);
 					break;
-				case RETURN_STRAIGHTISH:
+//				case RETURN_STRAIGHTISH:
 //					returnStraightish();
-					break;
-				case RETURN_ROTATE:
+//					break;
+//				case RETURN_ROTATE:
 //					returnRotate();
-					break;
-				case DUMPING_CENTER:
+//					break;
+//				case DUMPING_CENTER:
 //					dumpingCenter();
+//					break;
+				case BACKUP:
+					//backup();
+					state = State.MOVE_TO_CENTER;
 					break;
-				case BACK_IN:
-//					backIn();
-					break;
-				case DUMP:
+//				case DUMP:
 //					dump();
-					break;
+//					break;
 			}
 		}
 	}
 	
+	private void moveToCenter(boolean forward) {
+		// TODO 
+		
+	}
 	private void lowerLadderRobot()
 	{
 		byte[] byteArray = {0x41};
@@ -210,18 +207,17 @@ public class Graph implements Runnable {
 		rotateRobot(angle);
 		//vectorizedPath.add(newSegment(robotNode.getX(),robotNode.getX());
 		//
-		
-	}
-	private void driveStraighishExcavate() {
-		if(!acceptableError()) {
-			state = State.EXCAVATE_ROTATE;
+		raiseLadderRobot();
+		try {
+			synchronized(this) {
+				wait(1000);
+			}
+		} catch(Exception ex) {
+			ex.printStackTrace();
 		}
-		//Y value of excavation region in millimeters is: 4440.0 mm
-		if(reachedDestination(CompetitionAreas.EXCAVATION)) {
-			state = State.EXCAVATE;
-		}
-		
+		stopRobot();
 	}
+
 	private synchronized boolean reachedDestination(CompetitionAreas area) {
 		double currentY = robotNode.getY();
 		switch(area) {
@@ -231,12 +227,12 @@ public class Graph implements Runnable {
 				}
 				return false;
 			case OBSTACLE:
-				if(currentY < EXCAVATION_AREA_BOUNDARY && currentY > OBSTACE_AREA_BOUNDARY) {
+				if(currentY < EXCAVATION_AREA_BOUNDARY && currentY > OBSTACLE_AREA_BOUNDARY) {
 					return true;
 				}
 				return false;
 			case STARTING:
-				if(currentY < OBSTACE_AREA_BOUNDARY) {
+				if(currentY < OBSTACLE_AREA_BOUNDARY) {
 					return true;
 				}
 				return false;
@@ -252,13 +248,12 @@ public class Graph implements Runnable {
 		return false;
 	}
 	private void driveToExcavate() {
-		if(orientedCorrectly()) {
-			state = State.EXCAVATE_STRAIGHTISH;
+		for(Segment seg : vectorizedPath)
+		{
+			//TODO put getSegmentAngle inside of Segment class.
+			rotateRobot(robotNode.getAngle() - getNextSegmentAngle());
+			moveRobot(true);
 		}
-		else {
-			state = State.EXCAVATE_ROTATE;
-		}
-		
 	}
 	private boolean orientedCorrectly() {
 		if(robotNode.getAngle() <= FORWARD_DIRECTION + ANGLE_TOLERANCE && robotNode.getAngle() >= FORWARD_DIRECTION - ANGLE_TOLERANCE) {
@@ -268,7 +263,7 @@ public class Graph implements Runnable {
 	}
 	public void sendPathCorrection()
 	{
-		if(state == State.EXCAVATE_STRAIGHTISH || state == State.RETURN_STRAIGHTISH) {
+		if(state == State.MOVE_TO_CENTER || state == State.MOVE_TO_EXCAVATE) {
 			error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
 			byte[] byteArray = new byte[5];
 			byteArray[0] = 0x14;
@@ -276,6 +271,17 @@ public class Graph implements Runnable {
 			byteArray[2] = (byte) (127 - error);
 			byteArray[3] = 0x50;
 			byteArray[4] = (byte) (127 + error);
+			locomotionController.writeBytes(byteArray);
+		}
+		else if(state == State.MOVE_TO_DUMPING || state == State.BACKUP)
+		{
+			error = errorDistance(vectorizedPath.get(0), robotNode.getX(), robotNode.getY());
+			byte[] byteArray = new byte[5];
+			byteArray[0] = 0x14;
+			byteArray[1] = 0x50;
+			byteArray[2] = (byte) (127 + error);
+			byteArray[3] = 0x50;
+			byteArray[4] = (byte) (127 - error);
 			locomotionController.writeBytes(byteArray);
 		}
 	}
@@ -300,13 +306,12 @@ public class Graph implements Runnable {
 			}
 			scanner.close();
 			f.delete();
-			state = graph.State.EXCAVATE_STRAIGHTISH;
 			return true;
 		}
 		return false;
 	}
 	
-	public boolean loadMapFromFile(String filename)
+	public boolean loadMapFromFile(String filename, int goal)
 	{
 		File f = new File(filename);
 		if(f.exists())
@@ -329,7 +334,7 @@ public class Graph implements Runnable {
 					//TODO: use a real value for angle----------------------------|-------------------------------------------------------------------
 					map.get(rowsMade-1).add(new Node(value, colsMade, rowsMade-1, 0));
 					//------------------------------------------------------------|-------------------------------------------------------------------
-					if(value == goalValue && goalNode == null)
+					if(value == goal && goalNode == null)
 					{
 						goalNode = map.get(rowsMade-1).get(map.get(rowsMade-1).size()-1);
 					}
@@ -338,6 +343,11 @@ public class Graph implements Runnable {
 						rootNode = map.get(rowsMade-1).get(map.get(rowsMade-1).size()-1);
 					}
 					colsMade = (colsMade+1)%x;
+				}
+				map.get((int) (y/ARENA_LENGTH*OBSTACLE_AREA_BOUNDARY)).get((int) (x/2)).status = 6;
+				for(Node node : map.get((int) (y/ARENA_LENGTH*EXCAVATION_AREA_BOUNDARY)))
+				{
+					node.status = 7;
 				}
 			}
 			catch (FileNotFoundException e)
@@ -364,7 +374,7 @@ public class Graph implements Runnable {
 		}
 	}
 	
-	public Boolean planPath()
+	public Boolean planPath(int goal)
 	{
 		Queue<Node> q = new LinkedList<Node>();
 		q.add(rootNode);
@@ -379,9 +389,9 @@ public class Graph implements Runnable {
 					return true;
 				}
 				Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()+1);
-				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == goal || nextNode.status == 1)
 				{
-					if(nextNode.status != 6)
+					if(nextNode.status != goal)
 					{
 						nextNode.status = 10;
 					}
@@ -389,9 +399,9 @@ public class Graph implements Runnable {
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()).get(currentNode.getX()-1);
-				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == goal || nextNode.status == 1)
 				{
-					if(nextNode.status != 6)
+					if(nextNode.status != goal)
 					{
 						nextNode.status = 10;
 					}
@@ -399,9 +409,9 @@ public class Graph implements Runnable {
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()+1).get(currentNode.getX());
-				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == goal || nextNode.status == 1)
 				{
-					if(nextNode.status != 6)
+					if(nextNode.status != goal)
 					{
 						nextNode.status = 10;
 					}
@@ -409,9 +419,9 @@ public class Graph implements Runnable {
 					q.add(nextNode);
 				}
 				nextNode = map.get(currentNode.getY()-1).get(currentNode.getX());
-				if(/*nextNode.status == 0 ||*/ nextNode.status == 6 || nextNode.status == 1)
+				if(/*nextNode.status == 0 ||*/ nextNode.status == goal || nextNode.status == 1)
 				{
-					if(nextNode.status != 6)
+					if(nextNode.status != goal)
 					{
 						nextNode.status = 10;
 					}
@@ -457,7 +467,7 @@ public class Graph implements Runnable {
 		}
 	}
 	
-	public void vectorizePath()
+	public void vectorizePath(int goal)
 	{
 		Segment oldSegment = null;
 		Segment newSegment = null;
@@ -485,7 +495,7 @@ public class Graph implements Runnable {
 				Node b = path.remove(0);
 				vectorizedPath.add(new Segment(a.getX(), a.getY(), b.getX(), b.getY()));
 			}
-			else if(path.get(0).status == goalValue)
+			else if(path.get(0).status == goal)
 			{
 				path.remove(0);
 				vectorizedPath.add(newSegment);
