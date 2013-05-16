@@ -27,13 +27,13 @@ public class RoverControl {
 	
 	public RoverControl(int port) {
 		this.port = port;
-		locomotionCommunicator = new USBCommunicator("COM9");
+		locomotionCommunicator = new USBCommunicator("COM5");
 		locomotionCommunicator.start();
 		//excavationCommunicator = new USBCommunicator("COM5");
 		//encoderCommunicator = new USBCommunicator("COM6");
 		locomotionBuffer = new ArrayList<byte[]>();
 		autoManualMode = STARTING_AUTO_MANUAL_MODE;
-		this.mapper = new Graph(2,3,locomotionCommunicator);
+		this.mapper = new Graph(2,locomotionCommunicator);
 		graphThread = new Thread(mapper);
 	}
 	/**
