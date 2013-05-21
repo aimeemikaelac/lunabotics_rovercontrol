@@ -3,7 +3,7 @@ public class Node {
 	public int status;
 	public Boolean visited;
 	private Node prevNode;
-	private int x, y;
+	public int x, y;
 	private double angle;
 	
 	Node(int s, int x, int y, double angle)
@@ -14,6 +14,10 @@ public class Node {
 		this.y = y;
 		this.angle = angle;
 		prevNode = null;
+	}
+
+	public void setStatus(int status) {
+		this.status = status;
 	}
 
 	public double getAngle() {

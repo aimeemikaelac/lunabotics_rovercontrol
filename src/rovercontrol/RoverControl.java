@@ -19,7 +19,8 @@ public class RoverControl {
 	private USBCommunicator excavationCommunicator;
 	private USBCommunicator encoderCommunicator;
 	private Graph mapper;
-	private final boolean STARTING_AUTO_MANUAL_MODE = false;
+	private final boolean STARTING_AUTO_MANUAL_MODE = true;
+	private boolean started;
 	private boolean autoManualMode;
 	Thread graphThread;
 	
@@ -27,8 +28,9 @@ public class RoverControl {
 	
 	public RoverControl(int port) {
 		this.port = port;
-		locomotionCommunicator = new USBCommunicator("COM10");
-		locomotionCommunicator.start();
+		started = false;
+		locomotionCommunicator = new USBCommunicator("COM13");
+//		locomotionCommunicator.start();
 		//excavationCommunicator = new USBCommunicator("COM5");
 		//encoderCommunicator = new USBCommunicator("COM6");
 		locomotionBuffer = new ArrayList<byte[]>();
@@ -43,7 +45,7 @@ public class RoverControl {
 	public static void main(String[] args) {
 		RoverControl controller =  new RoverControl(Integer.parseInt(args[0]));
 		controller.runNetworkListener();
-		controller.graphThread.start();
+//		controller.graphThread.start();
 	}
 	private void runNetworkListener() {
 		while(true) {
@@ -57,11 +59,12 @@ public class RoverControl {
 				byte[] bytes = new byte[numBytes];
 				if(numBytes > 0){
 					receivedStream.read(bytes);
-					locomotionCommunicator.writeBytes(bytes);
+
 					System.out.println("wrote bytes");
 					int networkCode = bytes[0];
 					if(networkCode == 0x24)
 					{
+						System.out.println("Switching.");
 						autoManualMode = !autoManualMode;
 						if(autoManualMode) {
 							mapper.setAutoMode(true);
@@ -70,12 +73,25 @@ public class RoverControl {
 							mapper.setAutoMode(false);
 						}
 					}
+					else if(networkCode == 0x11 && !started) {
+						started = true;
+						//graphThread.start();
+						locomotionCommunicator.start();
+					}					
+					if(started && !autoManualMode) {
+						locomotionCommunicator.writeBytes(bytes);
+					}
+					if(autoManualMode && started)
+					{
+						graphThread.start();
+					}
 				}
 				serverSocket.close();
 				connectedSocket.close();
 			} catch (IOException e) {
 //				e.printStackTrace();
 				System.out.println("Could not open socket on port: " + port);
+				System.exit(-1);
 			}
 		}
 	}

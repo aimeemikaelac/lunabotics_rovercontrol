@@ -127,9 +127,22 @@ public class USBCommunicator extends Thread implements SerialPortEventListener {
 		String received;
 		try {
 			received = new String(bytes, "US-ASCII");
+			while(output == null)
+			{
+				try{
+					synchronized(this){
+						wait(200);
+					}
+				}
+				catch (Exception ex)
+				{
+					ex.printStackTrace();
+				}
+			}
 //			Integer intVal = Integer.parseInt(received.toString());
 //			char message = (char) intVal.intValue();
 //			char message = received.;
+			System.out.println(bytes.length);
 			for(int i = 0; i<bytes.length; i++) {
 				byte aByte = bytes[i];
 				output.write(bytes[i]);
