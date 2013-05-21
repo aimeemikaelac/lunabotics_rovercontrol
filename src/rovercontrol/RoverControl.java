@@ -29,7 +29,7 @@ public class RoverControl {
 	public RoverControl(int port) {
 		this.port = port;
 		started = false;
-		locomotionCommunicator = new USBCommunicator("COM7");
+		locomotionCommunicator = new USBCommunicator("COM13");
 //		locomotionCommunicator.start();
 		//excavationCommunicator = new USBCommunicator("COM5");
 		//encoderCommunicator = new USBCommunicator("COM6");
