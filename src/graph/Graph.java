@@ -47,6 +47,8 @@ public class Graph implements Runnable {
 		STARTING, OBSTACLE, EXCAVATION;
 	}
 	private Position position;
+	private int y;
+	private int x;
 	
 	public Graph(int rootSymbol, USBCommunicator locomotionController)
 	{
@@ -90,6 +92,7 @@ public class Graph implements Runnable {
 	
 	public void run()
 	{
+		System.out.println("running graph thread---------------------");
 		/*synchronized(this) {
 			inAutonomyMode = autoMode;
 		}*/
@@ -535,8 +538,8 @@ public class Graph implements Runnable {
 			Scanner scanner = null;
 			try {
 				scanner = new Scanner(f);
-				int y = scanner.nextInt();
-				int x = scanner.nextInt();
+				y = scanner.nextInt();
+				x = scanner.nextInt();
 				int rowsMade = 0;
 				int colsMade = 0;
 				while(scanner.hasNextInt())
@@ -562,11 +565,16 @@ public class Graph implements Runnable {
 					colsMade = (colsMade+1)%x;
 				}
 				//Add the center point for the starting area.
-				map.get((int) (y/ARENA_LENGTH*OBSTACLE_AREA_BOUNDARY)).get((int) (x/2)).status = 6;
+//				map.get((int) (y/ARENA_LENGTH*OBSTACLE_AREA_BOUNDARY)).get((int) (x/2)).status = 6;
 				for(Node node : map.get((int) (y/ARENA_LENGTH*EXCAVATION_AREA_BOUNDARY)))
 				{
 					node.status = 7;
 				}
+//				ArrayList<ArrayList<Node>> temp = new ArrayList<ArrayList<Node>>();
+//				for(int i = 0; i<map.size(); i++) {
+//					temp.add(map.remove(0));
+//				}
+//				map = temp;
 			}
 			catch (FileNotFoundException e)
 			{
@@ -617,93 +625,94 @@ public class Graph implements Runnable {
 		
 		synchronized(this) {
 			rootNode = robotNode;
-		}
-		q.add(rootNode);
-		while(!q.isEmpty())
-		{
-			Node currentNode = q.poll();
-			if(! currentNode.visited)
+			q.add(rootNode);
+			while(!q.isEmpty())
 			{
-				//System.out.println(goalNode.status + "," + goalNode.getX() + "," + goalNode.getY());
-				//if(currentNode.status == 6)
-				//{
-				//System.out.print(goalNode.status);
-				//System.out.println("," + currentNode.status);
-				//}
-				if(currentNode.status == goalNode.status)
+				Node currentNode = q.poll();
+				if(! currentNode.visited)
 				{
-					System.out.println("Found a working path.");
-					return true;
-				}
-
-				/*synchronized(this){
-					System.out.print("x: " + currentNode.getX());
-					System.out.println("y: " + currentNode.getY());
-				}*/
-				if(currentNode.getX()+1 < 126)
-				{
-					Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()+1);
-					if(nextNode.status == 0 || nextNode.status == goal || nextNode.status == 1)
+					//System.out.println(goalNode.status + "," + goalNode.getX() + "," + goalNode.getY());
+					//if(currentNode.status == 6)
+					//{
+					//System.out.print(goalNode.status);
+					//System.out.println("," + currentNode.status);
+					//}
+//					if(currentNode.status == goalNode.status)
+					if(currentNode == goalNode)
 					{
-						if(nextNode.status != goal)
-						{
-							nextNode.status = 10;
-						}
-						nextNode.setPrevNode(currentNode);
-						q.add(nextNode);
+						System.out.println("Found a working path.");
+						return true;
 					}
-				}
-				
-				if(currentNode.getX()-1 > 0)
-				{
-					Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()-1);
-					if(nextNode.status == 0 || nextNode.status == goal || nextNode.status == 1)
+	
+					/*synchronized(this){
+						System.out.print("x: " + currentNode.getX());
+						System.out.println("y: " + currentNode.getY());
+					}*/
+					if(currentNode.getX()+1 < x)
 					{
-						if(nextNode.status == goal)
+						Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()+1);
+						if(planningNodeLocationState(goal, nextNode))
 						{
-							System.out.println("Found Goal");
+							if(nextNode.status != goal)
+							{
+								nextNode.status = 10;
+							}
+							nextNode.setPrevNode(currentNode);
+							q.add(nextNode);
 						}
-						if(nextNode.status != goal)
-						{
-							nextNode.status = 10;
-						}
-						nextNode.setPrevNode(currentNode);
-						q.add(nextNode);
 					}
-				}
-				
-				if(currentNode.getY()+1 < 126)
-				{
-					Node nextNode = map.get(currentNode.getY()+1).get(currentNode.getX());
-					if(nextNode.status == 0 || nextNode.status == goal || nextNode.status == 1)
+					
+					if(currentNode.getX()-1 > 0)
 					{
-						if(nextNode.status == goal)
+						Node nextNode = map.get(currentNode.getY()).get(currentNode.getX()-1);
+						if(planningNodeLocationState(goal, nextNode))
 						{
-							System.out.println("Found Goal");
+							if(nextNode.status == goal)
+							{
+								System.out.println("Found Goal");
+							}
+							if(nextNode.status != goal)
+							{
+								nextNode.status = 10;
+							}
+							nextNode.setPrevNode(currentNode);
+							q.add(nextNode);
 						}
-						if(nextNode.status != goal)
-						{
-							nextNode.status = 10;
-						}
-						nextNode.setPrevNode(currentNode);
-						q.add(nextNode);
 					}
-				}
-				if(currentNode.getY()-1 > 0)
-				{
-					Node nextNode = map.get(currentNode.getY()-1).get(currentNode.getX());
-					if(nextNode.status == 0 || nextNode.status == goal || nextNode.status == 1)
+					
+					if(currentNode.getY()+1 < y)//126)
 					{
-						if(nextNode.status == goal)
+						Node nextNode = map.get(currentNode.getY()+1).get(currentNode.getX());
+						if(planningNodeLocationState(goal, nextNode))
 						{
-							System.out.println("Found Goal");
+							if(nextNode.status == goal)
+							{
+								System.out.println("Found Goal");
+							}
+							if(nextNode.status != goal)
+							{
+								nextNode.status = 10;
+							}
+							nextNode.setPrevNode(currentNode);
+							q.add(nextNode);
 						}
-						if(nextNode.status != goal)
+					}
+					if(currentNode.getY()-1 > 0)
+					{
+						Node nextNode = map.get(currentNode.getY()-1).get(currentNode.getX());
+						if(planningNodeLocationState(goal, nextNode))
 						{
-							nextNode.status = 10;
+							if(nextNode.status == goal)
+							{
+								System.out.println("Found Goal");
+							}
+							if(nextNode.status != goal)
+							{
+								nextNode.status = 10;
+							}
+							nextNode.setPrevNode(currentNode);
+							q.add(nextNode);
 						}
-						nextNode.setPrevNode(currentNode);
-						q.add(nextNode);
 					}
 				}
 			}
@@ -712,12 +721,16 @@ public class Graph implements Runnable {
 		return false;
 	}
 	
-	public void backTrace()
+	private boolean planningNodeLocationState(int goal, Node nextNode) {
+		return nextNode.status == 0 || nextNode.status == goal || nextNode.status == 1 || nextNode.status == 7;
+	}
+	
+	public synchronized void backTrace()
 	{
 		Stack<Node> s = new Stack<Node>();
 		Node currentNode = goalNode;
 		s.add(currentNode);
-		while(currentNode != rootNode || currentNode != null)
+		while(currentNode != rootNode && currentNode != null)
 		{
 			currentNode = currentNode.getPrevNode();
 			s.add(currentNode);
